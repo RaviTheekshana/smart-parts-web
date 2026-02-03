@@ -144,16 +144,8 @@ function getProperError(err) {
     if (isError(err)) {
         return err;
     }
-    if ("TURBOPACK compile-time truthy", 1) {
-        // Provide a better error message for cases where `throw undefined`
-        // is called in development
-        if (typeof err === 'undefined') {
-            return new Error('`undefined` was thrown instead of a real error');
-        }
-        if (err === null) {
-            return new Error('`null` was thrown instead of a real error');
-        }
-    }
+    if ("TURBOPACK compile-time falsy", 0) //TURBOPACK unreachable
+    ;
     return new Error(isPlainObject(err) ? JSON.stringify(err) : err + '');
 }
 function getObjectClassLabel(value) {
@@ -238,6 +230,7 @@ function createIpc(port) {
     };
     let buffer = Buffer.alloc(0);
     socket.once('connect', ()=>{
+        socket.setNoDelay(true);
         socket.on('data', (chunk)=>{
             buffer = Buffer.concat([
                 buffer,
@@ -327,17 +320,20 @@ function createIpc(port) {
         },
         sendReady,
         async sendError (error) {
+            let failed = false;
             try {
                 await send({
                     type: 'error',
                     ...structuredError(error)
                 });
             } catch (err) {
+                // There's nothing we can do about errors that happen after this point, we can't tell anyone
+                // about them.
                 console.error('failed to send error back to rust:', err);
-                // ignore and exit anyway
-                process.exit(1);
+                failed = true;
             }
-            process.exit(0);
+            await new Promise((res)=>socket.end(()=>res()));
+            process.exit(failed ? 1 : 0);
         }
     };
 }

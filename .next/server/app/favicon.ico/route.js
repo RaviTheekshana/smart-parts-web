@@ -1,6 +1,7 @@
 var R=require("../../chunks/[turbopack]_runtime.js")("server/app/favicon.ico/route.js")
-R.c("server/chunks/node_modules_next_635ab235._.js")
-R.c("server/chunks/[root-of-the-server]__f547b805._.js")
-R.m("[project]/.next-internal/server/app/favicon.ico/route/actions.js [app-rsc] (server actions loader, ecmascript)")
-R.m("[project]/node_modules/next/dist/esm/build/templates/app-route.js { INNER_APP_ROUTE => \"[project]/src/app/favicon--route-entry.js [app-rsc] (ecmascript)\" } [app-rsc] (ecmascript)")
-module.exports=R.m("[project]/node_modules/next/dist/esm/build/templates/app-route.js { INNER_APP_ROUTE => \"[project]/src/app/favicon--route-entry.js [app-rsc] (ecmascript)\" } [app-rsc] (ecmascript)").exports
+R.c("server/chunks/[externals]_next_dist_a6d89067._.js")
+R.c("server/chunks/[root-of-the-server]__f408c708._.js")
+R.c("server/chunks/node_modules_next_dist_esm_build_templates_app-route_f5680d9e.js")
+R.c("server/chunks/_next-internal_server_app_favicon_ico_route_actions_353150a5.js")
+R.m(32682)
+module.exports=R.m(32682).exports
