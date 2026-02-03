@@ -75,9 +75,16 @@ export default function RevenueChart() {
                   ? new Date(label).toLocaleDateString()
                   : label
               }
-              formatter={(val: number) =>
-                new Intl.NumberFormat(undefined, { style: "currency", currency: "LKR" }).format(val)
-              }
+              formatter={(value: number | string | undefined) => {
+                const num = 
+                typeof value === "number"
+                ? value
+                : typeof value === "string"
+                ? Number(value)
+                : 0;
+                return new Intl.NumberFormat(undefined, { style: "currency", currency: "LKR" }).format(num);
+              }}
+
               labelStyle={{ color: "#0f172a" }}
             />
             <Line
