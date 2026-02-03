@@ -54,19 +54,41 @@ export default function OrdersPage() {
     return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700";
   }
 
-  if (!token) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-6">
-        <p className="text-slate-700 dark:text-slate-300">
-          Please{" "}
-          <a className="text-blue-600 dark:text-blue-400 underline" href="/login">
-            login
-          </a>{" "}
-          to view your orders.
-        </p>
+if (!token) {
+  return (
+    <>
+      {/* Header */}
+      <div className="bg-gradient-to-r from-blue-900 to-indigo-600 text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-22 pb-10">
+          <div className="text-center">
+            <h1 className="text-4xl md:text-5xl font-bold mb-2">
+              Orders
+            </h1>
+            <p className="text-xl text-blue-100 max-w-3xl mx-auto">
+              Log in to view and manage your orders easily.
+            </p>
+          </div>
+        </div>
       </div>
-    );
-  }
+
+      {/* Body */}
+      <div className="flex items-center justify-center py-24 px-6">
+        <div className="bg-white dark:bg-slate-900 shadow-lg rounded-xl p-8 max-w-md w-full text-center">
+          <p className="text-lg text-slate-700 dark:text-slate-300 mb-4">
+            Please login to view your orders
+          </p>
+
+          <a
+            href="/login"
+            className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-2 rounded-lg transition"
+          >
+            Login
+          </a>
+        </div>
+      </div>
+    </>
+  );
+}
 
   if (error) {
     return (
