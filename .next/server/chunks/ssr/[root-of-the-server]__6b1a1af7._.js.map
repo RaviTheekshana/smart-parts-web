@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 3, "column": 0}, "map": {"version":3,"sources":[],"names":[],"mappings":"","debugId":null}},
+    {"offset": {"line": 15, "column": 0}, "map": {"version":3,"sources":["file:///C:/Users/theek/Documents/DA%20Project/smart-parts/web/src/app/checkout/cancel/page.tsx"],"sourcesContent":["export default function CancelPage() {\r\n  return (\r\n    <div className=\"min-h-screen flex items-center justify-center p-6\">\r\n      <div className=\"max-w-md w-full rounded-2xl border border-amber-300/60 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-900/20 p-8 text-center\">\r\n        <h1 className=\"text-2xl font-bold text-amber-700 dark:text-amber-300\">Payment canceled</h1>\r\n        <p className=\"mt-2 text-slate-700 dark:text-slate-300\">You can try checking out again.</p>\r\n        <a href=\"/cart\" className=\"mt-6 inline-flex rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-4 py-2 hover:opacity-90 transition\">Back to cart</a>\r\n      </div>\r\n    </div>\r\n  );\r\n}\r\n"],"names":[],"mappings":";;;;;;AAAe,SAAS;IACtB,qBACE,8OAAC;QAAI,WAAU;kBACb,cAAA,8OAAC;YAAI,WAAU;;8BACb,8OAAC;oBAAG,WAAU;8BAAwD;;;;;;8BACtE,8OAAC;oBAAE,WAAU;8BAA0C;;;;;;8BACvD,8OAAC;oBAAE,MAAK;oBAAQ,WAAU;8BAA8H;;;;;;;;;;;;;;;;;AAIhK","debugId":null}}]
+}

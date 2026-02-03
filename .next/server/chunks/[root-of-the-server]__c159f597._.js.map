@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 3, "column": 0}, "map": {"version":3,"sources":[],"names":[],"mappings":"","debugId":null}},
+    {"offset": {"line": 55, "column": 0}, "map": {"version":3,"sources":["file:///C:/Users/theek/Documents/DA%20Project/smart-parts/web/src/app/api/ping/route.ts"],"sourcesContent":["import { NextResponse } from \"next/server\";\r\nexport function GET() { return NextResponse.json({ pong: true }); }\r\n"],"names":[],"mappings":";;;;AAAA;;AACO,SAAS;IAAQ,OAAO,gJAAY,CAAC,IAAI,CAAC;QAAE,MAAM;IAAK;AAAI","debugId":null}}]
+}
