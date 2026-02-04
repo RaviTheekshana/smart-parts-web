@@ -1,7 +1,5 @@
-export const API =
-  process.env.NEXT_PUBLIC_API || "http://localhost:3001";
+export const API = process.env.NEXT_PUBLIC_API || "http://localhost:3001";
 
-// With Cognito + API Gateway JWT authorizer, we fetch the Cognito session token on-demand.
 async function getIdToken(): Promise<string | null> {
   try {
     const { fetchAuthSession } = await import("aws-amplify/auth");
@@ -12,35 +10,55 @@ async function getIdToken(): Promise<string | null> {
   }
 }
 
-export async function api<T>(
-  path: string,
-  init: RequestInit = {}
-): Promise<T> {
+function joinUrl(base: string, path: string) {
+  if (/^https?:\/\//i.test(path)) return path;
+  const b = base.replace(/\/+$/, "");
+  const p = path.startsWith("/") ? path : `/${path}`;
+  return `${b}${p}`;
+}
+
+export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = await getIdToken();
 
-  const headers: any = {
-    "Content-Type": "application/json",
-    ...(init.headers || {}),
+  const headers: Record<string, string> = {
+    ...(init.headers as Record<string, string> | undefined),
   };
 
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
+  // Only set Content-Type when we actually send JSON.
+  // (Avoids issues on GET/HEAD and when using FormData)
+  if (!headers["Content-Type"] && init.body && !(init.body instanceof FormData)) {
+    headers["Content-Type"] = "application/json";
   }
 
-  const normalizedPath = path.startsWith("/api/")
-    ? path.replace("/api", "")
-    : path;
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
 
-  const res = await fetch(`${API}${normalizedPath}`, {
+  const url = joinUrl(API, path); // ✅ keep "/api/..." exactly as caller passes
+
+  const res = await fetch(url, {
     ...init,
     headers,
     cache: "no-store",
   });
 
+  // Read body ONCE
+  const contentType = res.headers.get("content-type") || "";
+  const raw = await res.text();
+
+  // If backend sends JSON, parse it (even for errors, so we can show message)
+  const parsed = contentType.includes("application/json") && raw
+    ? (() => { try { return JSON.parse(raw); } catch { return raw; } })()
+    : raw;
+
   if (!res.ok) {
-    throw new Error(await res.text());
+    const msg =
+      typeof parsed === "string"
+        ? parsed
+        : (parsed as any)?.message || (parsed as any)?.error || `HTTP ${res.status}`;
+    throw new Error(msg);
   }
 
-  const text = await res.text();
-  return (text ? JSON.parse(text) : (undefined as any)) as T;
+  // Successful response
+  return (parsed === "" ? (undefined as any) : (parsed as any)) as T;
 }

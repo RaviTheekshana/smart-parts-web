@@ -57,12 +57,6 @@ export default function HeaderClient() {
             >
               Orders
             </Link>
-            <Link 
-              href="/community" 
-              className="text-white hover:text-gray-400 font-medium transition-colors duration-200"
-            >
-              Community
-            </Link>
           </nav>
 
           {/* Desktop Auth Buttons */}
@@ -145,13 +139,6 @@ export default function HeaderClient() {
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Orders
-              </Link>
-              <Link 
-                href="/community"
-                className="block text-gray-700 hover:text-purple-600 font-medium py-2"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Community
               </Link>
               
               <hr className="border-gray-200" />

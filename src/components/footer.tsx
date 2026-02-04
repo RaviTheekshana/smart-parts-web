@@ -48,7 +48,6 @@ return (
               <h4 className="font-semibold mb-4">Support</h4>
               <ul className="space-y-2 text-gray-400">
                 <li><Link href="/help" className="hover:text-white transition-colors">Help Center</Link></li>
-                <li><Link href="/community" className="hover:text-white transition-colors">Community</Link></li>
                 <li><Link href="/status" className="hover:text-white transition-colors">Status</Link></li>
                 <li><Link href="/terms" className="hover:text-white transition-colors">Terms</Link></li>
               </ul>

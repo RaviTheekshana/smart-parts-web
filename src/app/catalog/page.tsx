@@ -43,7 +43,7 @@ export default function ModernCatalogPage() {
 
   // Fetch parts from backend
   const { data = { parts: [] }, error, isLoading } = useSWR<PartsResponse>(partsKey, api);
-  const parts: any[] = data.parts;
+  const parts: any[] = Array.isArray(data?.parts) ? data!.parts : [];
 
   // Categories from the API results
   const categories = useMemo(() => {
