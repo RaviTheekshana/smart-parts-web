@@ -2,33 +2,37 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Mail, Lock, Eye, EyeOff, ArrowRight, User as UserIcon } from "lucide-react";
-import { api } from "@/lib/api";
+import { Mail, Lock, Eye, EyeOff, ArrowRight, User as UserIcon, CheckCircle } from "lucide-react";
+import { signUp, confirmSignUp, signIn } from "aws-amplify/auth";
 import { useAuth } from "@/context/AuthContext";
-
-type LoginResp = { token: string };
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login } = useAuth(); // login is () => void
 
   const [formData, setFormData] = useState({ name: "", email: "", password: "" });
-  const [errors, setErrors] = useState<Partial<Record<keyof typeof formData, string>>>({});
+  const [verificationCode, setVerificationCode] = useState("");
+  const [verificationStep, setVerificationStep] = useState(false);
+
+  const [errors, setErrors] = useState<Partial<Record<keyof typeof formData | "code", string>>>({});
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [acceptTos, setAcceptTos] = useState(true); // default true for demo; toggle as you like
+  const [acceptTos, setAcceptTos] = useState(true);
 
   // Optional: prefill demo data in dev
   useEffect(() => {
-    if (process.env.NODE_ENV !== "production") {
-      setFormData({ name: "Admin", email: "admin@example.com", password: "admin123" });
-    }
+    // Demo data handled manually now
   }, []);
 
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     const { name, value, type, checked } = e.target;
     if (type === "checkbox") {
       setAcceptTos(checked);
+      return;
+    }
+    if (name === "code") {
+      setVerificationCode(value);
+      setErrors((s) => ({ ...s, code: undefined }));
       return;
     }
     setFormData((s) => ({ ...s, [name]: value }));
@@ -47,34 +51,73 @@ export default function RegisterPage() {
     return Object.keys(next).length === 0;
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
     if (!validate()) return;
     setIsLoading(true);
 
     try {
-      await api("/api/auth/register", {
-        method: "POST",
-        body: JSON.stringify({
-          name: formData.name.trim(),
-          email: formData.email,
-          password: formData.password,
-        }),
+      const { isSignUpComplete, nextStep } = await signUp({
+        username: formData.email,
+        password: formData.password,
+        options: {
+          userAttributes: {
+            email: formData.email,
+            name: formData.name, // Make sure standard attributes are mapped in Cognito
+            // If 'name' is a custom attribute, use 'custom:name'
+          },
+        },
       });
 
-      const res = await api<LoginResp>("/api/auth/login", {
-        method: "POST",
-        body: JSON.stringify({ email: formData.email, password: formData.password }),
-      });
-
-      // Auto-login after successful registration
-      login(res.token);
-      router.push("/catalog");
+      if (nextStep.signUpStep === "CONFIRM_SIGN_UP") {
+        setVerificationStep(true);
+      } else if (isSignUpComplete) {
+        // Should not happen for standard Cognito setup without verification, but just in case
+        await autoLogin();
+      }
     } catch (err: any) {
+      console.error("Registration error", err);
       const msg = err?.message || "Unknown error";
       setErrors((s) => ({ ...s, password: "Registration failed. " + msg }));
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function handleVerification(e: React.FormEvent) {
+    e.preventDefault();
+    if (!verificationCode) {
+      setErrors(s => ({ ...s, code: "Code is required" }));
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const { isSignUpComplete, nextStep } = await confirmSignUp({
+        username: formData.email,
+        confirmationCode: verificationCode
+      });
+
+      if (isSignUpComplete) {
+        await autoLogin();
+      } else {
+        setErrors(s => ({ ...s, code: `Verification incomplete: ${nextStep.signUpStep}` }));
+      }
+    } catch (err: any) {
+      console.error("Verification error", err);
+      setErrors(s => ({ ...s, code: err.message || "Verification failed." }));
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function autoLogin() {
+    try {
+      await signIn({ username: formData.email, password: formData.password });
+      login();
+      router.push("/catalog");
+    } catch (err) {
+      console.error("Auto-login failed", err);
+      router.push("/login");
     }
   }
 
@@ -92,170 +135,197 @@ export default function RegisterPage() {
               <UserIcon className="w-8 h-8 text-white" />
             </div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
-              Create your account
+              {verificationStep ? "Verify Email" : "Create your account"}
             </h1>
             <p className="text-slate-600 dark:text-slate-400 text-sm">
-              Start your journey in a few seconds
+              {verificationStep ? "Enter the code sent to your email" : "Start your journey in a few seconds"}
             </p>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-6" noValidate>
-            {/* Name */}
-            <div className="space-y-2">
-              <label htmlFor="name" className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                Full Name
-              </label>
-              <div className="relative">
-                <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <input
-                  id="name"
-                  name="name"
-                  type="text"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  className={[
-                    "w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800",
-                    "border rounded-xl transition-all duration-200",
-                    "focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent",
-                    errors.name ? "border-red-300 dark:border-red-600" : "border-slate-200 dark:border-slate-700",
-                    "text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400",
-                  ].join(" ")}
-                  placeholder="Jane Doe"
-                  autoComplete="name"
-                />
+          {!verificationStep ? (
+            /* Registration Form */
+            <form onSubmit={handleRegister} className="space-y-6" noValidate>
+              {/* Name */}
+              <div className="space-y-2">
+                <label htmlFor="name" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Full Name
+                </label>
+                <div className="relative">
+                  <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <input
+                    id="name"
+                    name="name"
+                    type="text"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    className={[
+                      "w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800",
+                      "border rounded-xl transition-all duration-200",
+                      "focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent",
+                      errors.name ? "border-red-300 dark:border-red-600" : "border-slate-200 dark:border-slate-700",
+                      "text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400",
+                    ].join(" ")}
+                    placeholder="Jane Doe"
+                    autoComplete="name"
+                  />
+                </div>
+                {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
               </div>
-              {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
-            </div>
 
-            {/* Email */}
-            <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                Email Address
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  className={[
-                    "w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800",
-                    "border rounded-xl transition-all duration-200",
-                    "focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent",
-                    errors.email ? "border-red-300 dark:border-red-600" : "border-slate-200 dark:border-slate-700",
-                    "text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400",
-                  ].join(" ")}
-                  placeholder="you@example.com"
-                  autoComplete="email"
-                />
+              {/* Email */}
+              <div className="space-y-2">
+                <label htmlFor="email" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    className={[
+                      "w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800",
+                      "border rounded-xl transition-all duration-200",
+                      "focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent",
+                      errors.email ? "border-red-300 dark:border-red-600" : "border-slate-200 dark:border-slate-700",
+                      "text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400",
+                    ].join(" ")}
+                    placeholder="you@example.com"
+                    autoComplete="email"
+                  />
+                </div>
+                {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
               </div>
-              {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
-            </div>
 
-            {/* Password */}
-            <div className="space-y-2">
-              <label htmlFor="password" className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                Password
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  className={[
-                    "w-full pl-10 pr-12 py-3 bg-slate-50 dark:bg-slate-800",
-                    "border rounded-xl transition-all duration-200",
-                    "focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent",
-                    errors.password ? "border-red-300 dark:border-red-600" : "border-slate-200 dark:border-slate-700",
-                    "text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400",
-                  ].join(" ")}
-                  placeholder="••••••••"
-                  autoComplete="new-password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((s) => !s)}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
-              {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
-            </div>
-
-            {/* Terms & Login link */}
-            <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={acceptTos}
-                  onChange={handleInputChange}
-                  name="acceptTos"
-                  className="w-4 h-4 text-blue-600 bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-600 rounded focus:ring-blue-500 dark:focus:ring-blue-400"
-                />
-                <span className="text-slate-600 dark:text-slate-400">
-                  I agree to the{" "}
+              {/* Password */}
+              <div className="space-y-2">
+                <label htmlFor="password" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    className={[
+                      "w-full pl-10 pr-12 py-3 bg-slate-50 dark:bg-slate-800",
+                      "border rounded-xl transition-all duration-200",
+                      "focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent",
+                      errors.password ? "border-red-300 dark:border-red-600" : "border-slate-200 dark:border-slate-700",
+                      "text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400",
+                    ].join(" ")}
+                    placeholder="••••••••"
+                    autoComplete="new-password"
+                  />
                   <button
                     type="button"
-                    onClick={() => router.push("/terms")}
-                    className="text-blue-600 dark:text-blue-400 hover:underline"
+                    onClick={() => setShowPassword((s) => !s)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                   >
-                    Terms
-                  </button>{" "}
-                  &{" "}
-                  <button
-                    type="button"
-                    onClick={() => router.push("/privacy")}
-                    className="text-blue-600 dark:text-blue-400 hover:underline"
-                  >
-                    Privacy
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
-                </span>
-              </label>
-            </div>
+                </div>
+                {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
+              </div>
 
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-slate-400 disabled:to-slate-500 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl disabled:cursor-not-allowed group"
-            >
-              {isLoading ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <>
-                  <span>Create account</span>
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </>
-              )}
-            </button>
+              {/* Terms & Login link */}
+              <div className="flex items-center justify-between text-sm">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={acceptTos}
+                    onChange={handleInputChange}
+                    name="acceptTos"
+                    className="w-4 h-4 text-blue-600 bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-600 rounded focus:ring-blue-500 dark:focus:ring-blue-400"
+                  />
+                  <span className="text-slate-600 dark:text-slate-400">
+                    I agree to the{" "}
+                    <button type="button" onClick={() => router.push("/terms")} className="text-blue-600 dark:text-blue-400 hover:underline">Terms</button>{" "}
+                    &{" "}
+                    <button type="button" onClick={() => router.push("/privacy")} className="text-blue-600 dark:text-blue-400 hover:underline">Privacy</button>
+                  </span>
+                </label>
+              </div>
 
-            {/* Demo hint */}
-            <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
-              Tip: For Dev, we prefill sample data to speed up testing.
-            </p>
-          </form>
+              {/* Submit */}
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-slate-400 disabled:to-slate-500 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl disabled:cursor-not-allowed group"
+              >
+                {isLoading ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <span>Create account</span>
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </>
+                )}
+              </button>
+            </form>
+          ) : (
+            /* Verification Form */
+            <form onSubmit={handleVerification} className="space-y-6" noValidate>
+              <div className="space-y-2">
+                <label htmlFor="code" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Verification Code
+                </label>
+                <div className="relative">
+                  <CheckCircle className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <input
+                    id="code"
+                    name="code"
+                    type="text"
+                    value={verificationCode}
+                    onChange={handleInputChange}
+                    className={[
+                      "w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800",
+                      "border rounded-xl transition-all duration-200",
+                      "focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent",
+                      errors.code ? "border-red-300 dark:border-red-600" : "border-slate-200 dark:border-slate-700",
+                      "text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400",
+                    ].join(" ")}
+                    placeholder="Enter 6-digit code"
+                  />
+                </div>
+                {errors.code && <p className="text-red-500 text-xs mt-1">{errors.code}</p>}
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 disabled:from-slate-400 disabled:to-slate-500 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl disabled:cursor-not-allowed group"
+              >
+                {isLoading ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <span>Verify & Sign In</span>
+                )}
+              </button>
+            </form>
+          )}
 
           {/* Bottom note */}
-          <div className="text-center">
-            <p className="text-sm text-slate-600 dark:text-slate-400">
-              Already have an account?{" "}
-              <button
-                type="button"
-                onClick={() => router.push("/login")}
-                className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-semibold transition-colors hover:underline"
-              >
-                Sign in
-              </button>
-            </p>
-          </div>
+          {!verificationStep && (
+            <div className="text-center">
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                Already have an account?{" "}
+                <button
+                  type="button"
+                  onClick={() => router.push("/login")}
+                  className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-semibold transition-colors hover:underline"
+                >
+                  Sign in
+                </button>
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Decorative blobs */}

@@ -3,14 +3,14 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
-import { api } from "@/lib/api";
+import { signIn } from "aws-amplify/auth";
 import { useAuth } from "@/context/AuthContext";
 
 type ApiResp = { token: string };
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login } = useAuth(); // login is now () => void, triggers checkUser
 
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
@@ -19,9 +19,7 @@ export default function LoginPage() {
   const [remember, setRemember] = useState(true);
 
   useEffect(() => {
-    if (process.env.NODE_ENV !== "production") {
-      setFormData({ email: "admin@example.com", password: "admin123" });
-    }
+    // Optional: Pre-fill specific testing credentials if needed
   }, []);
 
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -49,14 +47,26 @@ export default function LoginPage() {
 
     setIsLoading(true);
     try {
-      const res = await api<ApiResp>("/api/auth/login", {
-        method: "POST",
-        body: JSON.stringify({ email: formData.email, password: formData.password }),
+      const { isSignedIn, nextStep } = await signIn({
+        username: formData.email,
+        password: formData.password,
       });
 
-      login(res.token);
-      router.push("/catalog");
+      if (isSignedIn) {
+        login(); // Trigger context update
+        router.push("/catalog");
+      } else {
+        // Handle next steps if MFA or other challenges are required
+        if (nextStep.signInStep === "CONFIRM_SIGN_UP") {
+          // For simplicity, redirect to register to confirm or handle here. 
+          // Usually login doesn't jump to confirm sign up unless previously flow was broken.
+          setErrors((s) => ({ ...s, password: "Account not confirmed. Please verify your email." }));
+        } else {
+          setErrors((s) => ({ ...s, password: `Login required additional step: ${nextStep.signInStep}` }));
+        }
+      }
     } catch (err: any) {
+      console.error("Login error", err);
       const msg = err?.message || "Unknown error";
       setErrors((s) => ({ ...s, password: "Login failed. " + msg }));
     } finally {

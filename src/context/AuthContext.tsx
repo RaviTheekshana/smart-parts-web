@@ -1,52 +1,85 @@
 "use client";
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { getToken, setToken } from "@/lib/api";
-import { jwtDecode } from "jwt-decode";
+import { getCurrentUser, fetchAuthSession, signOut, signIn, confirmSignUp } from "aws-amplify/auth";
+import { Hub } from "aws-amplify/utils";
+import "@/lib/amplify-config"; // Ensure Amplify is configured
 
-type Decoded = { _id?: string; id?: string; userId?: string; email?: string; role?: string };
 type UserInfo = { id: string; email?: string; role?: string } | null;
 
 type AuthCtx = {
   token: string | null;
   user: UserInfo;
   isAuthLoading: boolean;
-  login: (t: string) => void;
+  login: () => void; // Deprecated, kept for compat or re-purposed for re-sync
   logout: () => void;
 };
 
 const AuthContext = createContext<AuthCtx | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [token, setT] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<UserInfo>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
-  const decodeUser = (t: string | null): UserInfo => {
-    if (!t) return null;
+  async function checkUser() {
     try {
-      const d = jwtDecode<Decoded>(t);
-      return { id: d._id || d.id || d.userId || "", email: d.email, role: d.role };
-    } catch {
-      return null;
+      const session = await fetchAuthSession();
+      const currentUser = await getCurrentUser().catch(() => null);
+
+      if (session.tokens?.idToken && currentUser) {
+        setToken(session.tokens.idToken.toString());
+        // For now, mapping userId to id. Cognito attributes need separate fetch if we want email specifically, 
+        // but often claims have email.
+        const email = session.tokens.idToken.payload.email as string | undefined;
+        // Role management in Cognito is via Groups or Custom Attributes. 
+        // For simplicity, we default role or parse from claims if available.
+        const role = (session.tokens.idToken.payload["custom:role"] as string) || "user";
+
+        setUser({
+          id: currentUser.userId,
+          email: email,
+          role: role
+        });
+      } else {
+        setToken(null);
+        setUser(null);
+      }
+    } catch (error) {
+      console.error("Error checking auth session", error);
+      setToken(null);
+      setUser(null);
+    } finally {
+      setIsAuthLoading(false);
     }
-  };
+  }
 
   useEffect(() => {
-    const t = getToken();
-    setT(t);
-    setUser(decodeUser(t));
-    setIsAuthLoading(false);
+    checkUser();
+
+    // Listen for auth events
+    const listener = Hub.listen("auth", (data) => {
+      switch (data.payload.event) {
+        case "signedIn":
+          checkUser();
+          break;
+        case "signedOut":
+          setToken(null);
+          setUser(null);
+          break;
+      }
+    });
+
+    return () => listener();
   }, []);
 
-  const login = (t: string) => {
-    setToken(t);
-    setT(t);
-    setUser(decodeUser(t));
+  const login = () => {
+    // No-op or trigger check
+    checkUser();
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await signOut();
     setToken(null);
-    setT(null);
     setUser(null);
   };
 
