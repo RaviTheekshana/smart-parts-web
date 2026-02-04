@@ -11,7 +11,6 @@ import { Amplify } from "aws-amplify";
 //
 // NOTE: This file is imported once on the client (via AmplifyClientInit).
 
-const region = process.env.NEXT_PUBLIC_AWS_REGION || "us-east-1";
 const userPoolId = process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID || "";
 const userPoolClientId = process.env.NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID || "";
 
@@ -20,7 +19,6 @@ Amplify.configure({
     Cognito: {
       userPoolId,
       userPoolClientId,
-      userPoolRegion: region,
     },
   },
 });
