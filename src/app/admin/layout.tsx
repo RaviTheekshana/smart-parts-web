@@ -29,8 +29,6 @@ export default function AdminLayout({
       { href: "/admin/users", label: "Users", icon: Users },
       { href: "/admin/products", label: "Products", icon: Package },
       { href: "/admin/orders", label: "Orders", icon: Receipt },
-      { href: "/admin/posts", label: "Posts", icon: Megaphone },
-      { href: "/admin/testimonials", label: "Testimonials", icon: Quote },
     ],
     []
   );

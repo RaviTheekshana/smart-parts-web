@@ -38,12 +38,13 @@ export default function ModernCatalogPage() {
     return "/api/parts" + query;
   }, [vehicle]);
 
-  // Define the expected shape of the API response
-  type PartsResponse = { parts: any[] };
+type PartsResponse = any[] | { parts: any[] };
 
-  // Fetch parts from backend
-  const { data = { parts: [] }, error, isLoading } = useSWR<PartsResponse>(partsKey, api);
-  const parts: any[] = Array.isArray(data?.parts) ? data!.parts : [];
+const { data, error, isLoading } = useSWR<PartsResponse>(partsKey, api);
+
+const parts: any[] = Array.isArray(data)
+  ? data
+  : (data?.parts || []);
 
   // Categories from the API results
   const categories = useMemo(() => {

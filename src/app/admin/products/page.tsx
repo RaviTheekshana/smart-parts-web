@@ -20,13 +20,22 @@ export default function ProductsPage() {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
-  const { data, mutate, isLoading } = useSWR<{
-  parts: Part[]; total: number; page: number; pageSize: number; totalPages: number;
-    }>(`/api/admin/parts?query=${encodeURIComponent(query)}&page=${page}&limit=${limit}`, api);
+  type AdminPartsResponse =
+  | Part[]
+  | { parts?: Part[]; items?: Part[]; data?: Part[]; total?: number; page?: number; pageSize?: number; totalPages?: number };
 
-    const totalPages = data?.totalPages ?? 1;
+const { data, mutate, isLoading } = useSWR<AdminPartsResponse>(
+  `/api/admin/parts?query=${encodeURIComponent(query)}&page=${page}&limit=${limit}`,
+  api
+);
 
-  const parts = data?.parts || [];
+const parts: Part[] = Array.isArray(data)
+  ? data
+  : (data?.parts || data?.items || data?.data || []);
+
+const totalPages = Array.isArray(data) ? 1 : (data?.totalPages ?? 1);
+const total = Array.isArray(data) ? parts.length : (data?.total ?? parts.length);
+const currentPage = Array.isArray(data) ? 1 : (data?.page ?? 1);
   const fmt = (v?: number) =>
     typeof v === "number"
       ? new Intl.NumberFormat(undefined, { style: "currency", currency: "LKR" }).format(v)
@@ -114,7 +123,7 @@ export default function ProductsPage() {
         {/* Footer controls */}
     <div className="mt-4 flex items-center justify-between">
     <div className="text-sm text-slate-600">
-        Page {data?.page ?? 1} / {totalPages}, {data?.total ?? 0} results
+       Page {currentPage} / {totalPages}, {total} results
     </div>
     <div className="flex items-center gap-2">
         <select
