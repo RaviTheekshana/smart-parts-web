@@ -1,5 +1,7 @@
-export const API = process.env.NEXT_PUBLIC_API || "http://localhost:3001";
+export const API =
+  process.env.NEXT_PUBLIC_API || "http://localhost:3001";
 
+// With Cognito + API Gateway JWT authorizer, we fetch the Cognito session token on-demand.
 async function getIdToken(): Promise<string | null> {
   try {
     const { fetchAuthSession } = await import("aws-amplify/auth");
@@ -10,11 +12,12 @@ async function getIdToken(): Promise<string | null> {
   }
 }
 
-function joinUrl(base: string, path: string) {
-  if (/^https?:\/\//i.test(path)) return path;
-  const b = base.replace(/\/+$/, "");
-  const p = path.startsWith("/") ? path : `/${path}`;
-  return `${b}${p}`;
+function safeJsonParse(text: string) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
 }
 
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -24,9 +27,12 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     ...(init.headers as Record<string, string> | undefined),
   };
 
-  // Only set Content-Type when we actually send JSON.
-  // (Avoids issues on GET/HEAD and when using FormData)
-  if (!headers["Content-Type"] && init.body && !(init.body instanceof FormData)) {
+  // Only set Content-Type automatically when we are sending JSON (not for FormData, etc.)
+  const hasBody = init.body !== undefined && init.body !== null;
+  const isFormData =
+    typeof FormData !== "undefined" && init.body instanceof FormData;
+
+  if (!headers["Content-Type"] && hasBody && !isFormData) {
     headers["Content-Type"] = "application/json";
   }
 
@@ -34,31 +40,38 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const url = joinUrl(API, path); // ✅ keep "/api/..." exactly as caller passes
+  // ✅ keep your normalization logic unchanged
+  const normalizedPath = path.startsWith("/api/")
+    ? path.replace("/api", "")
+    : path;
 
-  const res = await fetch(url, {
-    ...init,
-    headers,
-    cache: "no-store",
-  });
+  const url = `${API}${normalizedPath}`;
 
-  // Read body ONCE
-  const contentType = res.headers.get("content-type") || "";
-  const raw = await res.text();
-
-  // If backend sends JSON, parse it (even for errors, so we can show message)
-  const parsed = contentType.includes("application/json") && raw
-    ? (() => { try { return JSON.parse(raw); } catch { return raw; } })()
-    : raw;
-
-  if (!res.ok) {
-    const msg =
-      typeof parsed === "string"
-        ? parsed
-        : (parsed as any)?.message || (parsed as any)?.error || `HTTP ${res.status}`;
-    throw new Error(msg);
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      ...init,
+      headers,
+      cache: "no-store",
+    });
+  } catch (e: any) {
+    // Network / CORS / DNS errors
+    throw new Error(`Network error calling ${url}: ${e?.message || String(e)}`);
   }
 
-  // Successful response
-  return (parsed === "" ? (undefined as any) : (parsed as any)) as T;
+  const text = await res.text();
+  const maybeJson = text ? safeJsonParse(text) : null;
+
+  if (!res.ok) {
+    // Give a clean error message, but keep details for debugging
+    const message =
+      (maybeJson && (maybeJson.message || maybeJson.error)) ||
+      text ||
+      `HTTP ${res.status} ${res.statusText}`;
+
+    throw new Error(`${message} (HTTP ${res.status})`);
+  }
+
+  // Return JSON when possible, else return text (rare but safe)
+  return (maybeJson ?? (text as any)) as T;
 }
