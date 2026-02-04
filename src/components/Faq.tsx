@@ -8,20 +8,28 @@ type QA = { q: string; a: string };
 
 const DEFAULTS: QA[] = [
   {
-    q: "Do you support VIN decoding?",
-    a: "Yes. We decode VINs where available and fall back to make-model-year-trim selection.",
+    a: "Yes. Add items and services to the same cart. Digital items unlock instantly after payment, while physical products are shipped or prepared for pickup.",
+    q: "Can I buy physical products and digital services in the same order?",
   },
   {
-    q: "How does Counterfeit Shield work?",
-    a: "We combine packaging cues, seller history, and device fingerprinting to generate a risk score.",
+    q: "How does delivery work for physical items?",
+    a: "You’ll see delivery options and estimated times at checkout. Once shipped, you can track your order status from your account.",
   },
   {
-    q: "Can vendors integrate stock?",
-    a: "Yes. We offer CSV import and REST APIs for live availability and pricing.",
+    q: "How do digital purchases get delivered?",
+    a: "Downloads and service instructions appear in your order details immediately after payment. For booked services, you’ll receive scheduling details and updates.",
   },
   {
-    q: "Is there Sinhala/Tamil support?",
-    a: "The UI is trilingual (EN/SI/TA) with LKR pricing and local tax handling.",
+    q: "Do you support business / bulk orders?",
+    a: "Yes. CloudRetail supports corporate accounts, bulk purchases, and invoice-ready order history for your finance team.",
+  },
+  {
+    q: "What payment methods are accepted?",
+    a: "We accept all major credit and debit cards, PayPal, Apple Pay, Google Pay, and various regional payment options.",
+  },
+  {
+    q: "Is my payment information secure?",
+    a: "Absolutely. We use industry-standard encryption and security protocols to protect your payment data during transactions.",
   },
 ];
 

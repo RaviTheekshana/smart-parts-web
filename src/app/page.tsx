@@ -18,81 +18,81 @@ import {
 export default function LandingPage() {
   const features = [
     {
-      icon: <CameraIcon className="w-7 h-7" />,
-      title: "Snap & Identify",
+      icon: <TruckIcon className="w-7 h-7" />,
+      title: "Fast delivery & pickup",
       description:
-        "Upload or take a photo. Our vision model pinpoints the exact part with OEM numbers and cross‑refs.",
-      pill: "Vision AI",
-    },
-    {
-      icon: <WrenchScrewdriverIcon className="w-7 h-7" />,
-      title: "Guaranteed Fitment",
-      description:
-        "VIN/vehicle selector + fitment graph ensures the part matches your make, model, year, and trim.",
-      pill: "Fitment",
+        "Island‑wide shipping for physical products with real‑time tracking, plus convenient pickup options where available.",
+      pill: "Fulfillment",
     },
     {
       icon: <ShieldCheckIcon className="w-7 h-7" />,
-      title: "Counterfeit Shield",
+      title: "Secure checkout",
       description:
-        "Risk scoring, package anomalies, and seller reputation signals to avoid fake parts.",
-      pill: "Trust",
-    },
-    {
-      icon: <TruckIcon className="w-7 h-7" />,
-      title: "Real‑time Stock & Delivery",
-      description:
-        "See nearby vendors, pickup windows, and delivery ETAs with dynamic pricing.",
-      pill: "Logistics",
+        "Trusted payments, fraud checks, and clear returns for a smoother, safer buying experience.",
+      pill: "Security",
     },
     {
       icon: <CpuChipIcon className="w-7 h-7" />,
-      title: "OEM vs Aftermarket",
+      title: "Digital services, instantly",
       description:
-        "Compare OEM, OES, and quality aftermarket alternatives with ratings and warranty.",
-      pill: "Compare",
+        "Sell or buy subscriptions, warranties, setup help, and downloadable assets with instant access after payment.",
+      pill: "Digital",
     },
     {
       icon: <GlobeAltIcon className="w-7 h-7" />,
-      title: "Sri Lanka Ready",
+      title: "Local + global catalog",
       description:
-        "LKR pricing, local vendors, trilingual UI, and support for re‑conditioned imports.",
-      pill: "Local",
+        "Curated brands and verified sellers with LKR pricing, tax‑ready invoices, and multilingual storefront support.",
+      pill: "Marketplace",
+    },
+    {
+      icon: <MagnifyingGlassCircleIcon className="w-7 h-7" />,
+      title: "Smart discovery",
+      description:
+        "Powerful search, category filters, and recommendations to find the right product or service quickly.",
+      pill: "Search",
+    },
+    {
+      icon: <BoltIcon className="w-7 h-7" />,
+      title: "Business ready",
+      description:
+        "Bulk orders, corporate accounts, and service bookings — built for teams as well as individual shoppers.",
+      pill: "B2B",
     },
   ];
 
   const steps = [
     {
       n: 1,
-      title: "Choose your vehicle",
-      text: "Set VIN or pick Make → Model → Year. We pre‑filter everything to your fitment.",
+      title: "Browse or search",
+      text: "Explore categories or search with filters to find physical products and digital services.",
     },
     {
       n: 2,
-      title: "Snap or search",
-      text: "Upload a photo or type the part name/number. AI suggests exact matches.",
+      title: "Add to cart or book",
+      text: "Mix items in one checkout — products, subscriptions, and service add‑ons.",
     },
-    { n: 3, title: "Compare & verify", text: "See OEM vs aftermarket, pricing, stock, and risk score." },
-    { n: 4, title: "Checkout or pickup", text: "Order with delivery windows or reserve for in‑store pickup." },
+    { n: 3, title: "Pay securely", text: "Checkout with trusted payment options and instant order confirmation." },
+    { n: 4, title: "Delivered or unlocked", text: "Track delivery for physical goods and get instant access for digital purchases." },
   ];
 
   const testimonials = [
     {
-      name: "Ruwan Perera",
-      role: "Workshop Owner – Galle",
+      name: "Nethmi Senanayake",
+      role: "Online Shopper – Colombo",
       quote:
-        "PartPal cut our sourcing time from hours to minutes. Fitment confidence is a game‑changer.",
+        "CloudRetail made it easy to buy gadgets and grab a setup service in one checkout. Delivery updates were spot‑on.",
     },
     {
-      name: "Shalini Fernando",
-      role: "Parts Buyer – Colombo",
+      name: "Tharindu Perera",
+      role: "Small Business Owner – Kandy",
       quote:
-        "Counterfeit Shield saved us from a costly mistake. Love the local vendor integrations!",
+        "We order supplies in bulk and also purchase digital subscriptions for the team. The invoicing and corporate pricing are super helpful.",
     },
     {
-      name: "Akila Jayasuriya",
-      role: "Fleet Manager – Logistics",
-      quote: "Bulk requests + delivery ETA tracking works brilliantly for our vans.",
+      name: "Ishara Fernando",
+      role: "Freelance Designer – Remote",
+      quote: "Selling digital packs on CloudRetail is smooth — customers get instant downloads and I get paid on time.",
     },
   ];
 
@@ -110,28 +110,28 @@ export default function LandingPage() {
           <div className="max-w-2xl">
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-blue-100">
               <BoltIcon className="h-4 w-4" />
-              <span>AI‑Powered Spare‑Part Identifier & Marketplace</span>
+              <span>CloudRetail - Physical Products + Digital Services</span>
             </div>
             <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
-              Find the <span className="bg-gradient-to-r from-yellow-300 to-orange-400 bg-clip-text text-transparent">right part</span> in seconds -
-              with fitment certainty.
+              Shop <span className="bg-gradient-to-r from-yellow-300 to-orange-400 bg-clip-text text-transparent">everything</span> you need -
+              products and services, in one place.
             </h1>
             <p className="mt-5 text-lg leading-7 text-blue-100/90">
-              Snap a photo or search by name/number. PartPal identifies the component, verifies authenticity, and connects you to nearby vendors with stock.
+              Discover quality physical products, book digital services, and manage orders with fast delivery and instant access - all under one checkout.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
-                href="/identify"
+                href="catalog"
                 className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-6 py-3 font-semibold text-gray-900 shadow-md transition hover:-translate-y-0.5 hover:shadow-lg"
               >
-                Try Image Identify
+                Shop Now
                 <CameraIcon className="h-5 w-5" />
               </Link>
               <Link
                 href="/catalog"
                 className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 bg-white/10 px-6 py-3 font-semibold text-white backdrop-blur transition hover:bg-white/20"
               >
-                Browse Catalog
+                Explore Categories
                 <ArrowRightIcon className="h-5 w-5" />
               </Link>
               <button className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 px-6 py-3 font-semibold text-white/90 backdrop-blur hover:bg-white/10">
@@ -142,11 +142,11 @@ export default function LandingPage() {
             {/* Quick vehicle selector pills */}
             <div className="mt-8 flex flex-wrap items-center gap-2 text-xs text-blue-100/80">
               {[
-                "Toyota Premio 2008",
-                "Nissan Leaf ZE1",
-                "Suzuki Alto 800",
-                "Honda Vezel RU3",
-                "Mazda Axela BK",
+                "Electronics",
+                "Home & Living",
+                "Fashion",
+                "Subscriptions",
+                "Digital Services",
               ].map((t) => (
                 <span key={t} className="rounded-full border border-white/15 bg-white/5 px-3 py-1">
                   {t}
@@ -160,7 +160,7 @@ export default function LandingPage() {
                 <MagnifyingGlassCircleIcon className="h-6 w-6 text-gray-500" />
                 <input
                   type="text"
-                  placeholder="Search: Alternator Toyota 1NZ-FE or paste part #"
+                  placeholder="Search: headphones, air fryer, website setup, or subscription..."
                   className="h-10 w-full bg-transparent text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
                 />
                 <button className="rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white">Search</button>
@@ -178,35 +178,35 @@ export default function LandingPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-xs text-gray-300">
                     <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse delay-1000" />
-                    <span>Live match</span>
-                    <span className="rounded-full bg-emerald-400/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-300 ring-1 ring-emerald-400/30">98%</span>
+                    <span>Live deal</span>
+                    <span className="rounded-full bg-emerald-400/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-300 ring-1 ring-emerald-400/30">-20%</span>
                   </div>
                   {/* tiny part image */}
                   <img
-                    src="/images/parts/brake-pad.jpg"
-                    alt="Brake pad"
-                    className="h-10 w-10 rounded-lg bg-black/30 object-contain ring-1 ring-white/10"
+                    src="/images/products/wireless-earbuds.jpg"
+                    alt="Wireless earbuds"
+                    className="h-20 w-20 rounded-lg bg-black/30 object-contain ring-1 ring-white/10"
                   />
                 </div>
 
-                {/* Part summary */}
+                {/* Product summary */}
                 <div className="mt-3 rounded-xl border border-white/10 bg-black/30 p-3">
                   <div className="flex items-center justify-between text-xs text-gray-300">
                     <div className="truncate pr-3">
-                      <p className="text-[11px] uppercase tracking-wide text-gray-400">Part</p>
-                      <p className="text-sm font-semibold text-white">Brake Pad Set (Front)</p>
+                      <p className="text-[11px] uppercase tracking-wide text-gray-400">Product</p>
+                      <p className="text-sm font-semibold text-white">Wireless Earbuds Pro</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[11px] uppercase tracking-wide text-gray-400">OEM #</p>
-                      <p className="font-mono text-sm text-gray-100">04465-0D240</p>
+                      <p className="text-[11px] uppercase tracking-wide text-gray-400">SKU</p>
+                      <p className="font-mono text-sm text-gray-100">CR-EB-PRO-01</p>
                     </div>
                   </div>
                   <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-white/10">
-                    <div className="h-full w-[98%] bg-gradient-to-r from-emerald-400 to-green-500" />
+                    <div className="h-full w-[-20%] bg-gradient-to-r from-emerald-400 to-green-500" />
                   </div>
-                  <p className="mt-2 text-xs text-gray-400">Fits Toyota 1NZ‑FE · Premio/Allion (2007–2011)</p>
+                  <p className="mt-2 text-xs text-gray-400">Free delivery over LKR 10,000 · 1‑year warranty</p>
                   <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-gray-300">
-                    {["OEM", "Aftermarket A+", "Ceramic", "Warranty 6m"].map((t) => (
+                    {["Bluetooth 5.3", "Noise Cancelling", "1‑year warranty", "Fast charging"].map((t) => (
                       <span key={t} className="rounded-full bg-white/5 px-2 py-0.5 ring-1 ring-white/10">
                         {t}
                       </span>
@@ -216,7 +216,7 @@ export default function LandingPage() {
 
                 {/* Quick picks */}
                 <div className="mt-3 grid grid-cols-3 gap-3">
-                  {["Brake Pad", "Alternator", "Tie Rod", "Oil Filter", "Radiator", "Shock Absorber"].map((k) => (
+                  {["Earbuds", "Smartwatch", "Air Fryer", "Skincare", "Cloud Backup", "Website Setup"].map((k) => (
                     <div
                       key={k}
                       className="rounded-xl border border-white/10 bg-white/5 p-3 text-center text-xs font-medium text-gray-100 hover:border-white/20"
@@ -229,16 +229,16 @@ export default function LandingPage() {
                 {/* Vendor & delivery */}
                 <div className="mt-4 grid grid-cols-2 gap-3">
                   <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                    <p className="text-[11px] text-gray-400">Nearby vendor</p>
-                    <p className="text-sm font-semibold text-gray-100">AutoZone Bambalapitiya</p>
-                    <p className="text-xs text-emerald-400">In stock · Pickup 2h</p>
-                    <p className="mt-1 text-xs text-gray-300">LKR 8,250</p>
+                    <p className="text-[11px] text-gray-400">Seller</p>
+                    <p className="text-sm font-semibold text-gray-100">CloudRetail Verified Store</p>
+                    <p className="text-xs text-emerald-400">In stock · Ships today</p>
+                    <p className="mt-1 text-xs text-gray-300">LKR 18,990</p>
                   </div>
                   <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                    <p className="text-[11px] text-gray-400">Delivery ETA</p>
-                    <p className="text-sm font-semibold text-gray-100">Tomorrow 10:00–12:00</p>
-                    <p className="text-xs text-blue-300">Fee LKR 950</p>
-                    <p className="mt-1 text-[11px] text-gray-400">Cash on delivery available</p>
+                    <p className="text-[11px] text-gray-400">Digital service add‑on</p>
+                    <p className="text-sm font-semibold text-gray-100">Setup & onboarding</p>
+                    <p className="text-xs text-blue-300">From LKR 2,500</p>
+                    <p className="mt-1 text-[11px] text-gray-400">Book for this order</p>
                   </div>
                 </div>
 
@@ -248,10 +248,10 @@ export default function LandingPage() {
                     Add to cart
                   </button>
                   <button className="inline-flex items-center justify-center rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm font-semibold text-white hover:bg-white/10">
-                    Compare
+                    Save
                   </button>
                   <button className="inline-flex items-center justify-center rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm font-semibold text-white hover:bg-white/10">
-                    3D View
+                    Details
                   </button>
                 </div>
               </div>
@@ -264,9 +264,9 @@ export default function LandingPage() {
       <section id="features" className="bg-white py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Built for the automotive ecosystem</h2>
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Built for modern shopping</h2>
             <p className="mt-3 text-lg text-gray-600">
-              From workshops and fleets to DIY enthusiasts — PartPal streamlines sourcing, verification, and checkout.
+              From workshops and fleets to DIY enthusiasts — ProductPal streamlines sourcing, verification, and checkout.
             </p>
           </div>
 
@@ -296,7 +296,7 @@ export default function LandingPage() {
       <section id="how" className="bg-gray-50 py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">From photo to checkout in four steps</h2>
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">From discovery to delivery in four steps</h2>
           </div>
           <ol className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
             {steps.map((s) => (
@@ -316,8 +316,8 @@ export default function LandingPage() {
       <section id="pricing" className="bg-white py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Simple, transparent pricing</h2>
-            <p className="mt-3 text-lg text-gray-600">Start free. Upgrade as you scale.</p>
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Plans for shoppers and sellers</h2>
+            <p className="mt-3 text-lg text-gray-600">Start free. Upgrade for premium perks or selling tools.</p>
           </div>
 
           <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-3">
@@ -326,7 +326,7 @@ export default function LandingPage() {
                 name: "Starter",
                 price: "Rs 0",
                 note: "No credit card",
-                perks: ["100 identifications / month", "1 vehicle profile", "Community support"],
+                perks: ["Unlimited browsing & wishlists", "Standard checkout & returns", "Email support"],
               },
               {
                 name: "Pro",
@@ -334,16 +334,16 @@ export default function LandingPage() {
                 note: "/month",
                 highlight: true,
                 perks: [
-                  "Unlimited identifications",
-                  "Fitment graph + Counterfeit Shield",
-                  "Vendor quotes & delivery windows",
+                  "Free delivery threshold perks",
+                  "Priority support + member discounts",
+                  "Instant access for digital purchases",
                 ],
               },
               {
                 name: "Business",
                 price: "Custom",
                 note: "Contact sales",
-                perks: ["Multi‑branch vendors", "API access", "SLA & priority support"],
+                perks: ["Seller dashboard + payouts", "Product & service listings", "API access + dedicated support"],
               },
             ].map((p) => (
               <div
@@ -396,7 +396,7 @@ export default function LandingPage() {
       <section className="bg-gray-50 py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Trusted by garages & fleets</h2>
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Loved by shoppers, teams, and creators</h2>
           </div>
           <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-3">
             {testimonials.map((t) => (
@@ -410,8 +410,7 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
-      {/* FAQ */}
+    {/* FAQ */}
       <FAQ />
     </div>
   );

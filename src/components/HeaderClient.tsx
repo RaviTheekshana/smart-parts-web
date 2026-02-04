@@ -30,7 +30,7 @@ export default function HeaderClient() {
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2">
             <span className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-              <img src="/logo.png" alt="Logo" className="w-32 h-31 pt-1" />
+              <img src="/logo.png" alt="Logo" className="w-32 h-24 pt-3" />
             </span>
           </Link>
 
@@ -40,7 +40,7 @@ export default function HeaderClient() {
               href="/catalog" 
               className="text-white hover:text-gray-400 font-medium transition-colors duration-200"
             >
-              Catalog
+              Product
             </Link>
             <Link 
               href="/cart" 
