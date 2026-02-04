@@ -1,57 +1,102 @@
 "use client";
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { getToken, setToken } from "@/lib/api";
 import { jwtDecode } from "jwt-decode";
 
-type Decoded = { _id?: string; id?: string; userId?: string; email?: string; role?: string };
+type Claims = {
+  sub?: string;
+  email?: string;
+  "cognito:groups"?: string[] | string;
+};
+
 type UserInfo = { id: string; email?: string; role?: string } | null;
 
 type AuthCtx = {
-  token: string | null;
+  token: string | null; // Cognito ID token (JWT)
   user: UserInfo;
   isAuthLoading: boolean;
-  login: (t: string) => void;
-  logout: () => void;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (name: string, email: string, password: string) => Promise<{ needsConfirmation: boolean }>;
+  confirmSignUp: (email: string, code: string) => Promise<void>;
+  logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthCtx | null>(null);
 
+function normalizeGroups(groups: Claims["cognito:groups"]): string[] {
+  if (!groups) return [];
+  if (Array.isArray(groups)) return groups;
+  return String(groups).split(",").map((g) => g.trim()).filter(Boolean);
+}
+
+function roleFromGroups(groups: string[]) {
+  return groups.includes("admin") ? "admin" : "customer";
+}
+
+function decodeUser(idToken: string | null): UserInfo {
+  if (!idToken) return null;
+  try {
+    const c = jwtDecode<Claims>(idToken);
+    const groups = normalizeGroups(c["cognito:groups"]);
+    return { id: c.sub || "", email: c.email, role: roleFromGroups(groups) };
+  } catch {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [token, setT] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<UserInfo>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
-  const decodeUser = (t: string | null): UserInfo => {
-    if (!t) return null;
+  async function refresh() {
     try {
-      const d = jwtDecode<Decoded>(t);
-      return { id: d._id || d.id || d.userId || "", email: d.email, role: d.role };
+      const { fetchAuthSession } = await import("aws-amplify/auth");
+      const session = await fetchAuthSession();
+      const idToken = session.tokens?.idToken?.toString() ?? null;
+      setToken(idToken);
+      setUser(decodeUser(idToken));
     } catch {
-      return null;
+      setToken(null);
+      setUser(null);
+    } finally {
+      setIsAuthLoading(false);
     }
-  };
+  }
 
   useEffect(() => {
-    const t = getToken();
-    setT(t);
-    setUser(decodeUser(t));
-    setIsAuthLoading(false);
+    refresh();
   }, []);
 
-  const login = (t: string) => {
-    setToken(t);
-    setT(t);
-    setUser(decodeUser(t));
+  const signIn: AuthCtx["signIn"] = async (email, password) => {
+    const { signIn } = await import("aws-amplify/auth");
+    await signIn({ username: email, password });
+    await refresh();
   };
 
-  const logout = () => {
+  const signUp: AuthCtx["signUp"] = async (name, email, password) => {
+    const { signUp } = await import("aws-amplify/auth");
+    const out = await signUp({
+      username: email,
+      password,
+      options: { userAttributes: { email, name } },
+    });
+    return { needsConfirmation: out?.isSignUpComplete === false };
+  };
+
+  const confirmSignUp: AuthCtx["confirmSignUp"] = async (email, code) => {
+    const { confirmSignUp } = await import("aws-amplify/auth");
+    await confirmSignUp({ username: email, confirmationCode: code });
+  };
+
+  const logout: AuthCtx["logout"] = async () => {
+    const { signOut } = await import("aws-amplify/auth");
+    await signOut();
     setToken(null);
-    setT(null);
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ token, user, isAuthLoading, login, logout }}>
+    <AuthContext.Provider value={{ token, user, isAuthLoading, signIn, signUp, confirmSignUp, logout }}>
       {children}
     </AuthContext.Provider>
   );

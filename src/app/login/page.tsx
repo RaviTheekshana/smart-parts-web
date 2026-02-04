@@ -3,14 +3,12 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
-import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 
-type ApiResp = { token: string };
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { signIn } = useAuth();
 
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
@@ -49,12 +47,7 @@ export default function LoginPage() {
 
     setIsLoading(true);
     try {
-      const res = await api<ApiResp>("/api/auth/login", {
-        method: "POST",
-        body: JSON.stringify({ email: formData.email, password: formData.password }),
-      });
-
-      login(res.token);
+      await signIn(formData.email, formData.password);
       router.push("/catalog");
     } catch (err: any) {
       const msg = err?.message || "Unknown error";

@@ -3,19 +3,19 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Mail, Lock, Eye, EyeOff, ArrowRight, User as UserIcon } from "lucide-react";
-import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 
-type LoginResp = { token: string };
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { signUp, confirmSignUp, signIn } = useAuth();
 
   const [formData, setFormData] = useState({ name: "", email: "", password: "" });
   const [errors, setErrors] = useState<Partial<Record<keyof typeof formData, string>>>({});
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [needsConfirm, setNeedsConfirm] = useState(false);
+  const [confirmCode, setConfirmCode] = useState("");
   const [acceptTos, setAcceptTos] = useState(true); // default true for demo; toggle as you like
 
   // Optional: prefill demo data in dev
@@ -53,26 +53,37 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      await api("/api/auth/register", {
-        method: "POST",
-        body: JSON.stringify({
-          name: formData.name.trim(),
-          email: formData.email,
-          password: formData.password,
-        }),
-      });
+      const out = await signUp(formData.name.trim(), formData.email, formData.password);
 
-      const res = await api<LoginResp>("/api/auth/login", {
-        method: "POST",
-        body: JSON.stringify({ email: formData.email, password: formData.password }),
-      });
+      if (out.needsConfirmation) {
+        setNeedsConfirm(true);
+        return;
+      }
 
-      // Auto-login after successful registration
-      login(res.token);
+      await signIn(formData.email, formData.password);
       router.push("/catalog");
     } catch (err: any) {
       const msg = err?.message || "Unknown error";
       setErrors((s) => ({ ...s, password: "Registration failed. " + msg }));
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function handleConfirm(e: React.FormEvent) {
+    e.preventDefault();
+    if (!confirmCode.trim()) {
+      setErrors((s) => ({ ...s, password: "Enter the verification code from email." }));
+      return;
+    }
+    setIsLoading(true);
+    try {
+      await confirmSignUp(formData.email, confirmCode.trim());
+      await signIn(formData.email, formData.password);
+      router.push("/catalog");
+    } catch (err: any) {
+      const msg = err?.message || "Unknown error";
+      setErrors((s) => ({ ...s, password: "Verification failed. " + msg }));
     } finally {
       setIsLoading(false);
     }
@@ -100,7 +111,7 @@ export default function RegisterPage() {
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+          <form onSubmit={needsConfirm ? handleConfirm : handleSubmit} className="space-y-6" noValidate>
             {/* Name */}
             <div className="space-y-2">
               <label htmlFor="name" className="text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -220,6 +231,24 @@ export default function RegisterPage() {
                 </span>
               </label>
             </div>
+
+            {/* Verification Code (only if Cognito requires it) */}
+            {needsConfirm && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Verification Code
+                </label>
+                <input
+                  value={confirmCode}
+                  onChange={(e) => setConfirmCode(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
+                  placeholder="Enter code from email"
+                />
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Check your email and enter the code to confirm your account.
+                </p>
+              </div>
+            )}
 
             {/* Submit */}
             <button
