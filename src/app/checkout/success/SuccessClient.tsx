@@ -3,6 +3,7 @@
 import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CheckCircle, Clock } from "lucide-react";
+import { api } from "@/lib/api";
 
 export default function SuccessClient() {
   const sp = useSearchParams();
@@ -13,34 +14,29 @@ export default function SuccessClient() {
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    async function run() {
-      try {
-        if (!sessionId) return setErr("Missing session_id");
+  async function run() {
+    try {
+      if (!sessionId) return setErr("Missing session_id");
 
-        // IMPORTANT: use a stable env var name
-        const base = process.env.NEXT_PUBLIC_API_BASE_URL;
-        if (!base) return setErr("Missing NEXT_PUBLIC_API_BASE_URL");
+      const orderId = sp.get("orderId");
+      if (!orderId) return setErr("Missing orderId");
 
-        const token = localStorage.getItem("token") || "";
+      await api("/api/payments/confirm", {
+        method: "POST",
+        body: JSON.stringify({ sessionId, orderId }),
+      });
 
-        const res = await fetch(`${base}/api/orders/finalize`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ session_id: sessionId }),
-        });
+      // Optional: clear cart AFTER confirmed
+      await api("/api/cart", { method: "DELETE" });
 
-        if (!res.ok) throw new Error(await res.text());
-        setDone(true);
-      } catch (e: unknown) {
-        setErr(e instanceof Error ? e.message : "Unknown error");
-      }
+      setDone(true);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Unknown error");
     }
+  }
 
-    run();
-  }, [sessionId]);
+  run();
+}, [sessionId]);
 
   return (
     <div className="min-h-screen pt-24 flex items-center justify-center bg-gradient-to-br from-emerald-100 via-white to-emerald-50 dark:from-slate-900 dark:via-slate-800 dark:to-emerald-950 p-6">

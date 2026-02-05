@@ -5,6 +5,7 @@ import Link from "next/link";
 import { api } from "@/lib/api";
 import VehicleSelectorModern, { VehicleSelection } from "@/components/VehicleSelector";
 import { Search, Package, Warehouse, ChevronRight } from "lucide-react";
+import { PartStock } from "@/components/PartStock";
 
 function qs(params: Record<string, any>) {
   const u = new URLSearchParams();
@@ -137,10 +138,8 @@ const parts: any[] = Array.isArray(data)
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredParts.map((p) => {
             const cat = Array.isArray(p.categoryPath) ? p.categoryPath.join(" / ") : (p.category || "Other");
-            const stock = p.stockTotal ?? 0;
-            const stockClass = stock > 50 ? "text-green-600" : stock > 20 ? "text-yellow-600" : "text-red-600";
             return (
-              <div key={p._id} className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border border-slate-200 overflow-hidden group">
+              <div key={p.id ?? p.partId ?? p.sku} className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border border-slate-200 overflow-hidden group">
                 <div className="p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
@@ -163,7 +162,7 @@ const parts: any[] = Array.isArray(data)
                         <Warehouse className="w-4 h-4" />
                         Stock
                       </span>
-                      <span className={`font-semibold ${stockClass}`}>{stock} units</span>
+                      <PartStock sku={p.sku} />
                     </div>
                   </div>
 
@@ -172,7 +171,7 @@ const parts: any[] = Array.isArray(data)
                       {typeof p.price === "number" ? formatPrice(p.price) : (p.price || "$—")}
                     </div>
                     <Link
-                      href={`/parts/${p._id}`}
+                      href={`/parts/${p.id ?? p.partId}`}
                       className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 transition-all flex items-center gap-2 shadow-lg shadow-blue-600/30"
                     >
                       View Details
