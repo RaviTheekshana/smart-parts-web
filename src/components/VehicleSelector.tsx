@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useMemo } from "react";
 import useSWR from "swr";
 import { api } from "@/lib/api";
 import { Filter } from "lucide-react";
@@ -23,37 +23,95 @@ type FacetsData = {
     makes?: string[];
     models?: string[];
     years?: number[];
-    // add other facet arrays if needed
   };
 };
 
-function useFacets(sel: VehicleSelection) {
+type VehicleRow = {
+  make?: string;
+  model?: string;
+  year?: number;
+  engine?: string;
+  transmission?: string;
+  trim?: string;
+};
+
+type VehiclesResponse = FacetsData | VehicleRow[] | { vehicles: VehicleRow[] };
+
+function useVehicles(sel: VehicleSelection) {
+  // Keep your original query behavior (if backend supports it)
   const params = new URLSearchParams();
   if (sel.make) params.set("make", sel.make);
   if (sel.model) params.set("model", sel.model);
   if (sel.year) params.set("year", String(sel.year));
+
   const key = "/api/vehicles" + (params.toString() ? `?${params.toString()}` : "");
-  const { data, error, isLoading } = useSWR<FacetsData>(key, api);
-  return { data, error, isLoading };
+  return useSWR<VehiclesResponse>(key, api);
 }
 
 export default function VehicleSelectorModern({ value, onChange }: Props) {
   const sel = value || {};
-  const { data, error, isLoading } = useFacets(sel);
+  const { data, error, isLoading } = useVehicles(sel);
 
-  const makes: string[] = data?.facets?.makes || [];
-  const models: string[] = data?.facets?.models || [];
-  const years: number[] = data?.facets?.years || [];
+  // ✅ Normalize response into either facets OR rows
+  const rows: VehicleRow[] = useMemo(() => {
+    if (!data) return [];
+    if (Array.isArray(data)) return data;
+    if ((data as any).vehicles && Array.isArray((data as any).vehicles)) return (data as any).vehicles;
+    return [];
+  }, [data]);
+
+  // ✅ If API provides facets, use them. Otherwise derive from rows.
+  const makes: string[] = useMemo(() => {
+    const f = !Array.isArray(data) ? (data as FacetsData)?.facets?.makes : undefined;
+    if (f?.length) return f;
+
+    const set = new Set<string>();
+    rows.forEach((r) => r.make && set.add(r.make));
+    return Array.from(set).sort();
+  }, [data, rows]);
+
+  const models: string[] = useMemo(() => {
+    const f = !Array.isArray(data) ? (data as FacetsData)?.facets?.models : undefined;
+    if (f?.length) return f;
+
+    const set = new Set<string>();
+    rows
+      .filter((r) => !sel.make || r.make === sel.make)
+      .forEach((r) => r.model && set.add(r.model));
+    return Array.from(set).sort();
+  }, [data, rows, sel.make]);
+
+  const years: number[] = useMemo(() => {
+    const f = !Array.isArray(data) ? (data as FacetsData)?.facets?.years : undefined;
+    if (f?.length) return f;
+
+    const set = new Set<number>();
+    rows
+      .filter((r) => (!sel.make || r.make === sel.make) && (!sel.model || r.model === sel.model))
+      .forEach((r) => typeof r.year === "number" && set.add(r.year));
+    return Array.from(set).sort((a, b) => b - a);
+  }, [data, rows, sel.make, sel.model]);
 
   function set<K extends keyof VehicleSelection>(k: K, v: VehicleSelection[K]) {
-    const next = { ...sel, [k]: v };
+    const next: VehicleSelection = { ...sel, [k]: v };
+
     if (k === "make") {
-      delete next.model; delete next.year; delete next.engine; delete next.transmission; delete next.trim;
+      delete next.model;
+      delete next.year;
+      delete next.engine;
+      delete next.transmission;
+      delete next.trim;
     } else if (k === "model") {
-      delete next.year; delete next.engine; delete next.transmission; delete next.trim;
+      delete next.year;
+      delete next.engine;
+      delete next.transmission;
+      delete next.trim;
     } else if (k === "year") {
-      delete next.engine; delete next.transmission; delete next.trim;
+      delete next.engine;
+      delete next.transmission;
+      delete next.trim;
     }
+
     onChange(next);
   }
 
@@ -76,7 +134,11 @@ export default function VehicleSelectorModern({ value, onChange }: Props) {
             className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
           >
             <option value="">Select Make</option>
-            {makes.map(m => <option key={m} value={m}>{m}</option>)}
+            {makes.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -90,7 +152,11 @@ export default function VehicleSelectorModern({ value, onChange }: Props) {
             className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <option value="">Select Model</option>
-            {models.map(m => <option key={m} value={m}>{m}</option>)}
+            {models.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -104,7 +170,11 @@ export default function VehicleSelectorModern({ value, onChange }: Props) {
             className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <option value="">Select Year</option>
-            {years.map(y => <option key={y} value={y}>{y}</option>)}
+            {years.map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -151,6 +221,11 @@ export default function VehicleSelectorModern({ value, onChange }: Props) {
 
       {isLoading && <p className="text-sm text-gray-500 mt-2">Loading vehicle facets…</p>}
       {error && <p className="text-sm text-red-600 mt-2">Failed to load vehicle facets.</p>}
+      {!isLoading && !error && makes.length === 0 && (
+        <p className="text-sm text-amber-600 mt-2">
+          No vehicle data returned from /api/vehicles (check API response shape).
+        </p>
+      )}
     </div>
   );
 }

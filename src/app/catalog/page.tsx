@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 import Link from "next/link";
 import { api } from "@/lib/api";
@@ -71,6 +71,16 @@ const parts: any[] = Array.isArray(data)
     });
   }, [parts, searchTerm, selectedCategory]);
 
+  useEffect(() => setVisible(PAGE_SIZE), [searchTerm, selectedCategory, vehicle]);
+
+  const PAGE_SIZE = 20;
+  const [visible, setVisible] = useState(PAGE_SIZE);
+
+  const visibleParts = useMemo(
+  () => filteredParts.slice(0, visible),
+  [filteredParts, visible]
+);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100">
       {/* Hero */}
@@ -136,7 +146,7 @@ const parts: any[] = Array.isArray(data)
 
         {/* Parts grid */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredParts.map((p) => {
+          {visibleParts.map((p) => {
             const cat = Array.isArray(p.categoryPath) ? p.categoryPath.join(" / ") : (p.category || "Other");
             return (
               <div key={p.id ?? p.partId ?? p.sku} className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border border-slate-200 overflow-hidden group">
@@ -183,6 +193,17 @@ const parts: any[] = Array.isArray(data)
             );
           })}
         </div>
+        {visible < filteredParts.length && (
+        <div className="flex justify-center mt-8">
+          <button
+            onClick={() => setVisible(v => v + PAGE_SIZE)}
+            className="px-6 py-3 rounded-xl bg-slate-900 text-white hover:opacity-90 transition"
+          >
+            Load more
+          </button>
+        </div>
+        )}
+
 
         {!isLoading && !error && filteredParts.length === 0 && (
           <div className="text-center py-16">

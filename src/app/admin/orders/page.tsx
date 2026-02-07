@@ -2,17 +2,24 @@
 
 import useSWR from "swr";
 import { api } from "@/lib/api";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RefreshCcw } from "lucide-react";
 
-type Row = {
-  _id: string;
-  userEmail?: string;
+type OrderItem = { sku: string; qty: number };
+
+type OrderRow = {
+  orderId: string;
+  userId?: string;
+  userEmail?: string; // optional if you ever add it later
   status: string;
-  grand: number;
   createdAt?: string;
+  items?: OrderItem[];
 };
+
+type OrdersResponse = OrderRow[] | { orders: OrderRow[] };
+
+type Part = { sku: string; name: string; price?: number };
 
 export default function AdminOrdersPage() {
   const router = useRouter();
@@ -21,18 +28,79 @@ export default function AdminOrdersPage() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
 
-  const { data, isLoading, mutate } = useSWR<{
-    orders: Row[]; total: number; page: number; pageSize: number; totalPages: number;
-  }>(
-    `/api/admin/orders?query=${encodeURIComponent(query)}&status=${status}&page=${page}&limit=${limit}`,
+  // ✅ Fetch admin orders (most likely returns ARRAY)
+  const { data, error, isLoading, mutate } = useSWR<OrdersResponse>(
+    `/api/admin/orders`,
     api
   );
 
-  const orders = data?.orders ?? [];
-  const totalPages = data?.totalPages ?? 1;
+  // Optional: load parts to compute totals by SKU
+  const { data: parts } = useSWR<Part[]>("/api/parts", api);
+
+  const priceBySku = useMemo(() => {
+    const map = new Map<string, number>();
+    (parts || []).forEach((p) => map.set(p.sku, Number(p.price ?? 0)));
+    return map;
+  }, [parts]);
+
+  const allOrders: OrderRow[] = useMemo(() => {
+    if (!data) return [];
+    return Array.isArray(data) ? data : (data.orders ?? []);
+  }, [data]);
+
+  // client-side filter: query + status
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const st = status.trim().toLowerCase();
+
+    return allOrders.filter((o) => {
+      const id = (o.orderId ?? "").toLowerCase();
+      const email = (o.userEmail ?? "").toLowerCase();
+      const uid = (o.userId ?? "").toLowerCase();
+      const s = (o.status ?? "").toLowerCase();
+
+      const matchesQuery = !q || id.includes(q) || email.includes(q) || uid.includes(q);
+      const matchesStatus = !st || s === st || s.includes(st);
+
+      return matchesQuery && matchesStatus;
+    });
+  }, [allOrders, query, status]);
+
+  // pagination (client-side)
+  const total = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+
+  const pageSafe = Math.min(Math.max(1, page), totalPages);
+
+  const orders = useMemo(() => {
+    const start = (pageSafe - 1) * limit;
+    return filtered.slice(start, start + limit);
+  }, [filtered, pageSafe, limit]);
+
+  // keep page valid when filters change
+  useMemo(() => {
+    if (page !== pageSafe) setPage(pageSafe);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageSafe]);
 
   const fmtMoney = (n: number) =>
     new Intl.NumberFormat(undefined, { style: "currency", currency: "LKR" }).format(n ?? 0);
+
+  function computeGrand(o: OrderRow): number {
+    const items = o.items ?? [];
+    return items.reduce((sum, it) => {
+      const price = priceBySku.get(it.sku) ?? 0;
+      return sum + price * Number(it.qty ?? 0);
+    }, 0);
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 text-red-600">
+        Failed to load admin orders: {String((error as any)?.message ?? error)}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -41,13 +109,19 @@ export default function AdminOrdersPage() {
         <div className="flex gap-2">
           <input
             className="border rounded-xl px-3 py-2 text-sm"
-            placeholder="Search email or id…"
+            placeholder="Search userId / email / orderId…"
             value={query}
-            onChange={(e) => { setQuery(e.target.value); setPage(1); }}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setPage(1);
+            }}
           />
           <select
             value={status}
-            onChange={(e) => { setStatus(e.target.value); setPage(1); }}
+            onChange={(e) => {
+              setStatus(e.target.value);
+              setPage(1);
+            }}
             className="border rounded-xl px-3 py-2 text-sm"
           >
             <option value="">All statuses</option>
@@ -78,25 +152,47 @@ export default function AdminOrdersPage() {
             </tr>
           </thead>
           <tbody>
-            {orders.map((o) => (
-              <tr key={o._id} className="border-b border-slate-200">
-                <td className="py-2 px-4 font-mono">{o._id.slice(-6).toUpperCase()}</td>
-                <td className="py-2 px-4">{o.userEmail ?? "—"}</td>
-                <td className="py-2 px-4 capitalize">{o.status}</td>
-                <td className="py-2 px-4">{fmtMoney(o.grand)}</td>
-                <td className="py-2 px-4">{o.createdAt ? new Date(o.createdAt).toLocaleString() : "—"}</td>
-                <td className="py-2 px-4 text-right">
-                  <button
-                    onClick={() => router.push(`/admin/orders/${o._id}`)}
-                    className="text-blue-600 hover:text-blue-800"
-                  >
-                    View
-                  </button>
+            {orders.map((o) => {
+              const id = o.orderId || "";
+              const grand = computeGrand(o);
+
+              return (
+                <tr key={id} className="border-b border-slate-200">
+                  <td className="py-2 px-4 font-mono">
+                    {id ? id.slice(-6).toUpperCase() : "—"}
+                  </td>
+                  <td className="py-2 px-4">{o.userEmail ?? o.userId ?? "—"}</td>
+                  <td className="py-2 px-4 capitalize">{o.status}</td>
+                  <td className="py-2 px-4">{fmtMoney(grand)}</td>
+                  <td className="py-2 px-4">
+                    {o.createdAt ? new Date(o.createdAt).toLocaleString() : "—"}
+                  </td>
+                  <td className="py-2 px-4 text-right">
+                    <button
+                      onClick={() => router.push(`/admin/orders/${id}`)}
+                      className="text-blue-600 hover:text-blue-800"
+                    >
+                      View
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+
+            {!isLoading && orders.length === 0 && (
+              <tr>
+                <td className="py-4 px-4 text-center text-slate-500" colSpan={6}>
+                  No orders
                 </td>
               </tr>
-            ))}
-            {!isLoading && orders.length === 0 && (
-              <tr><td className="py-4 px-4 text-center text-slate-500" colSpan={6}>No orders</td></tr>
+            )}
+
+            {isLoading && (
+              <tr>
+                <td className="py-4 px-4 text-center text-slate-500" colSpan={6}>
+                  Loading…
+                </td>
+              </tr>
             )}
           </tbody>
         </table>
@@ -105,27 +201,34 @@ export default function AdminOrdersPage() {
       {/* pagination */}
       <div className="mt-4 flex items-center justify-between">
         <div className="text-sm text-slate-600">
-          Page {data?.page ?? 1} / {totalPages} • {data?.total ?? 0} results
+          Page {pageSafe} / {totalPages} • {total} results
         </div>
         <div className="flex items-center gap-2">
           <select
             value={limit}
-            onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
+            onChange={(e) => {
+              setLimit(Number(e.target.value));
+              setPage(1);
+            }}
             className="border rounded-xl px-2 py-1 text-sm"
           >
-            {[10,20,50,100].map(n => <option key={n} value={n}>{n} / page</option>)}
+            {[10, 20, 50, 100].map((n) => (
+              <option key={n} value={n}>
+                {n} / page
+              </option>
+            ))}
           </select>
           <button
             className="border rounded-xl px-3 py-1 disabled:opacity-50"
-            disabled={page <= 1}
-            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={pageSafe <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
           >
             Prev
           </button>
           <button
             className="border rounded-xl px-3 py-1 disabled:opacity-50"
-            disabled={page >= totalPages}
-            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={pageSafe >= totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
           >
             Next
           </button>

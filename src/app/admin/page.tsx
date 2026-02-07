@@ -2,133 +2,314 @@
 
 import useSWR from "swr";
 import { api } from "@/lib/api";
-import { TrendingUp, Users, Package, Receipt } from "lucide-react";
-import RevenueChart from "@/components/admin/RevenueChart"; // ← imported
-import TopSellingTable from "@/components/admin/TopSellingTable";
-import TopLowStockTable from "@/components/admin/TopLowStockTable";
+import { useMemo } from "react";
+import {
+  Users,
+  Package,
+  Receipt,
+  Car,
+  Warehouse,
+  TrendingUp,
+} from "lucide-react";
 
-type Metrics = {
-  counts: { users: number; parts: number; orders: number; paidOrders: number };
-  revenue30d: { total: number };
-  ordersByStatus: Array<{ status: string; count: number }>;
-  recentOrders: Array<{ _id: string; status: string; grand?: number; createdAt?: string; userEmail?: string }>;
-  recentUsers: Array<{ _id: string; email: string; role: string; createdAt?: string }>;
-};
+type AnyObj = Record<string, any>;
 
-export default function AdminDashboard() {
-  const { data, error, isLoading, mutate } = useSWR<{ metrics: Metrics }>(
-    "/api/admin/metrics",
-    api
-  );
+function asArray(data: any): any[] {
+  if (!data) return [];
+  if (Array.isArray(data)) return data;
 
-  if (error) return <div className="p-6">Failed to load metrics.</div>;
+  // common shapes
+  if (Array.isArray(data.items)) return data.items;
+  if (Array.isArray(data.parts)) return data.parts;
+  if (Array.isArray(data.orders)) return data.orders;
+  if (Array.isArray(data.users)) return data.users;
+  if (Array.isArray(data.vehicles)) return data.vehicles;
+  if (Array.isArray(data.inventory)) return data.inventory;
 
-  const m = data?.metrics;
+  return [];
+}
 
-  const fmt = (v?: number) =>
-    typeof v === "number"
-      ? new Intl.NumberFormat(undefined, { style: "currency", currency: "LKR" }).format(v)
-      : "-";
+function toNumber(v: any): number {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function fmtMoney(v: number) {
+  return new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency: "LKR",
+    maximumFractionDigits: 0,
+  }).format(v);
+}
+
+function isoDay(d: Date) {
+  return d.toISOString().slice(0, 10);
+}
+
+export default function AdminPage() {
+  // Admin endpoints
+  const usersQ = useSWR("/api/admin/users", api);
+  const partsQ = useSWR("/api/admin/parts?limit=100&page=1", api);
+  const ordersQ = useSWR("/api/admin/orders", api);
+  const vehiclesQ = useSWR("/api/admin/vehicles", api);
+  const inventoryQ = useSWR("/api/admin/inventory", api);
+
+  const loading =
+    usersQ.isLoading ||
+    partsQ.isLoading ||
+    ordersQ.isLoading ||
+    vehiclesQ.isLoading ||
+    inventoryQ.isLoading;
+
+  const error =
+    usersQ.error || partsQ.error || ordersQ.error || vehiclesQ.error || inventoryQ.error;
+
+  const users = useMemo(() => asArray(usersQ.data), [usersQ.data]);
+  const parts = useMemo(() => asArray(partsQ.data), [partsQ.data]);
+  const orders = useMemo(() => asArray(ordersQ.data), [ordersQ.data]);
+  const vehicles = useMemo(() => asArray(vehiclesQ.data), [vehiclesQ.data]);
+  const inventory = useMemo(() => asArray(inventoryQ.data), [inventoryQ.data]);
+
+  // ---- Metrics ----
+  const counts = useMemo(() => {
+    const paidOrders = orders.filter((o) =>
+      String(o.status || "").toUpperCase() === "PAID"
+    ).length;
+
+    const lowStock = inventory.filter((i) => toNumber(i.qtyOnHand) <= 10).length;
+
+    return {
+      users: users.length,
+      parts: parts.length,
+      orders: orders.length,
+      paidOrders,
+      vehicles: vehicles.length,
+      lowStock,
+    };
+  }, [users, parts, orders, vehicles, inventory]);
+
+  // Orders by status
+  const ordersByStatus = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const o of orders) {
+      const s = String(o.status || "UNKNOWN").toUpperCase();
+      map.set(s, (map.get(s) || 0) + 1);
+    }
+    return Array.from(map.entries())
+      .map(([status, count]) => ({ status, count }))
+      .sort((a, b) => b.count - a.count);
+  }, [orders]);
+
+  // Revenue last 30 days (paid only)
+  const revenue30d = useMemo(() => {
+    const today = new Date();
+    const days: { day: string; total: number }[] = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      days.push({ day: isoDay(d), total: 0 });
+    }
+    const byDay = new Map(days.map((x) => [x.day, x]));
+
+    for (const o of orders) {
+      const status = String(o.status || "").toUpperCase();
+      if (status !== "PAID") continue;
+
+      const createdAt = o.createdAt ? new Date(o.createdAt) : null;
+      if (!createdAt || isNaN(createdAt.getTime())) continue;
+
+      const day = isoDay(createdAt);
+      const slot = byDay.get(day);
+      if (!slot) continue;
+
+      // your order may store total under grand or totals.grand
+      const grand =
+        toNumber(o.grand) ||
+        toNumber(o.total) ||
+        toNumber(o.totals?.grand) ||
+        0;
+
+      slot.total += grand;
+    }
+
+    const total = days.reduce((sum, d) => sum + d.total, 0);
+    const max = Math.max(1, ...days.map((d) => d.total));
+
+    return { total, max, days };
+  }, [orders]);
+
+  // Low stock table (top 8)
+  const lowStockTop = useMemo(() => {
+    const rows = inventory
+      .map((i) => ({
+        sku: String(i.sku || ""),
+        qtyOnHand: toNumber(i.qtyOnHand),
+        qtyReserved: toNumber(i.qtyReserved),
+      }))
+      .filter((r) => r.sku)
+      .sort((a, b) => a.qtyOnHand - b.qtyOnHand)
+      .slice(0, 8);
+
+    return rows;
+  }, [inventory]);
 
   return (
-  <div className="space-y-4 bg-white text-slate-900">
-  <div className="flex items-center justify-between">
-    <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Dashboard</h1>
-    <button
-      onClick={() => mutate()}
-      className="inline-flex items-center gap-2 rounded-xl bg-blue-600 text-white px-4 py-2 hover:bg-blue-700 transition"
-    >
-      Refresh
-    </button>
-  </div>
+    <div className="space-y-6 bg-white text-slate-900">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+          <p className="text-sm text-slate-500">
+            System summary from live APIs (Users, Parts, Orders, Vehicles, Inventory)
+          </p>
+        </div>
+
+        <div className="text-right">
+          {loading ? (
+            <div className="text-sm text-slate-500">Loading…</div>
+          ) : error ? (
+            <div className="text-sm text-red-600">
+              Error: {String(error?.message || error)}
+            </div>
+          ) : (
+            <div className="text-sm text-green-700 font-medium">Live</div>
+          )}
+        </div>
+      </div>
 
       {/* Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-    <Card icon={<Users className="w-5 h-5" />} label="Users" value={m?.counts.users} />
-    <Card icon={<Package className="w-5 h-5" />} label="Parts" value={m?.counts.parts} />
-    <Card icon={<Receipt className="w-5 h-5" />} label="Orders" value={m?.counts.orders} />
-    <Card icon={<TrendingUp className="w-5 h-5" />} label="Revenue (30d)" value={fmt(m?.revenue30d.total)} />
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <Card icon={<Users className="w-5 h-5" />} label="Users" value={counts.users} />
+        <Card icon={<Package className="w-5 h-5" />} label="Parts" value={counts.parts} />
+        <Card icon={<Receipt className="w-5 h-5" />} label="Orders" value={counts.orders} />
+        <Card icon={<TrendingUp className="w-5 h-5" />} label="Paid Orders" value={counts.paidOrders} />
+        <Card icon={<Car className="w-5 h-5" />} label="Vehicles Models" value={counts.vehicles} />
+        <Card icon={<Warehouse className="w-5 h-5" />} label="Low Stock (≤ 10)" value={counts.lowStock} />
       </div>
 
-      {/* Tables */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Orders */}
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      {/* Charts */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* Orders by Status */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-lg font-semibold">Recent Orders</h3>
-            <a href="/admin/orders" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">View all</a>
+            <h2 className="font-semibold">Orders by Status</h2>
+            <span className="text-xs text-slate-500">/admin/orders</span>
           </div>
+
+          {ordersByStatus.length === 0 ? (
+            <div className="text-sm text-slate-500">No data</div>
+          ) : (
+            <div className="space-y-2">
+              {(() => {
+                const max = Math.max(1, ...ordersByStatus.map((x) => x.count));
+                return ordersByStatus.map((x) => (
+                  <div key={x.status} className="flex items-center gap-3">
+                    <div className="w-28 text-xs font-medium text-slate-700">
+                      {x.status}
+                    </div>
+                    <div className="flex-1 h-3 rounded bg-slate-100 overflow-hidden">
+                      <div
+                        className="h-3 bg-blue-600"
+                        style={{ width: `${(x.count / max) * 100}%` }}
+                      />
+                    </div>
+                    <div className="w-10 text-right text-xs text-slate-600">
+                      {x.count}
+                    </div>
+                  </div>
+                ));
+              })()}
+            </div>
+          )}
+        </div>
+
+        {/* Revenue 30d */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold">Revenue (Paid) — Last 30 Days</h2>
+            <span className="text-xs text-slate-500">Derived from /admin/orders</span>
+          </div>
+
+          <div className="flex items-baseline justify-between mb-2">
+            <div className="text-2xl font-bold text-slate-900">
+              {fmtMoney(revenue30d.total)}
+            </div>
+            <div className="text-xs text-slate-500">PAID only</div>
+          </div>
+
+          {/* mini bar chart */}
+          <div className="flex items-end gap-[2px] h-24 border border-slate-100 rounded-lg p-2 bg-slate-50">
+            {revenue30d.days.map((d) => (
+              <div
+                key={d.day}
+                className="flex-1 rounded-sm bg-indigo-600"
+                title={`${d.day}: ${fmtMoney(d.total)}`}
+                style={{
+                  height: `${(d.total / revenue30d.max) * 100}%`,
+                  minHeight: d.total > 0 ? 2 : 0,
+                }}
+              />
+            ))}
+          </div>
+
+          <div className="mt-2 text-xs text-slate-500">
+            Hover bars to see daily totals.
+          </div>
+        </div>
+      </div>
+
+      {/* Low stock table */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-semibold">Low Stock (Top 8)</h2>
+          <span className="text-xs text-slate-500">/admin/inventory</span>
+        </div>
+
+        {lowStockTop.length === 0 ? (
+          <div className="text-sm text-slate-500">No inventory rows</div>
+        ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
+            <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-slate-500 border-b border-slate-200 dark:border-slate-700">
-                  <th className="py-2 pr-4">Order</th>
-                  <th className="py-2 pr-4">User</th>
-                  <th className="py-2 pr-4">Total</th>
-                  <th className="py-2">Status</th>
+                <tr className="text-left text-slate-500 border-b">
+                  <th className="py-2 pr-2">SKU</th>
+                  <th className="py-2 pr-2">On Hand</th>
+                  <th className="py-2 pr-2">Reserved</th>
                 </tr>
               </thead>
               <tbody>
-                {(m?.recentOrders ?? []).map((o) => (
-                  <tr key={o._id} className="border-b border-slate-200/60 dark:border-slate-700/60">
-                    <td className="py-2 pr-4">#{o._id.slice(-6).toUpperCase()}</td>
-                    <td className="py-2 pr-4">{o.userEmail ?? "—"}</td>
-                    <td className="py-2 pr-4">{o.grand != null ? fmt(o.grand) : "—"}</td>
-                    <td className="py-2">
-                      <span className={`px-2 py-1 rounded-lg text-xs ${o.status === "paid" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-gray-700"}`}>
-                        {o.status}
+                {lowStockTop.map((r) => (
+                  <tr key={r.sku} className="border-b last:border-b-0">
+                    <td className="py-2 pr-2 font-mono text-xs">{r.sku}</td>
+                    <td className="py-2 pr-2 font-semibold">
+                      <span className={r.qtyOnHand <= 10 ? "text-red-600" : ""}>
+                        {r.qtyOnHand}
                       </span>
                     </td>
+                    <td className="py-2 pr-2 text-slate-700">{r.qtyReserved}</td>
                   </tr>
                 ))}
-                {!isLoading && (m?.recentOrders?.length ?? 0) === 0 && (
-                  <tr><td className="py-4 text-slate-500" colSpan={4}>No orders.</td></tr>
-                )}
               </tbody>
             </table>
           </div>
-        </section>
+        )}
 
-        {/* Recent Users */}
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-lg font-semibold">Recent Users</h3>
-            <a href="/admin/users" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">View all</a>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="text-left text-slate-500 border-b border-slate-200 dark:border-slate-700">
-                  <th className="py-2 pr-4">Email</th>
-                  <th className="py-2 pr-4">Role</th>
-                  <th className="py-2">Joined</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(m?.recentUsers ?? []).map((u) => (
-                  <tr key={u._id} className="border-b border-slate-200/60 dark:border-slate-700/60">
-                    <td className="py-2 pr-4">{u.email}</td>
-                    <td className="py-2 pr-4">{u.role}</td>
-                    <td className="py-2">{u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "—"}</td>
-                  </tr>
-                ))}
-                {!isLoading && (m?.recentUsers?.length ?? 0) === 0 && (
-                  <tr><td className="py-4 text-slate-500" colSpan={3}>No users.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
-                 {/* Revenue Chart */}
-      <RevenueChart />
-      <TopSellingTable />
+        <div className="mt-3 text-xs text-slate-500">
+          Stock can be updated using: <span className="font-mono">PUT /admin/inventory/{"{sku}"}</span>
+        </div>
       </div>
-      <TopLowStockTable />
     </div>
   );
 }
 
-function Card({ icon, label, value }: { icon: React.ReactNode; label: string; value?: number | string }) {
+function Card({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value?: number | string;
+}) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 flex items-center gap-4 shadow-sm">
       <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 text-white flex items-center justify-center">
@@ -141,4 +322,3 @@ function Card({ icon, label, value }: { icon: React.ReactNode; label: string; va
     </div>
   );
 }
-

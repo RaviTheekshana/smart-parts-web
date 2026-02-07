@@ -13,12 +13,13 @@ type Item = {
   qty: number;
   locationId?: string;
 };
+
 type Order = {
-  _id: string;
+  _id?: string; // ✅ allow missing
   userId?: string;
   status: string;
   totals?: { subtotal: number; tax?: number; grand: number };
-  items: Item[];
+  items?: Item[]; // ✅ allow missing
   payment?: { provider?: string; status?: string; sessionId?: string; intentId?: string };
   createdAt?: string;
 };
@@ -28,6 +29,7 @@ export default function AdminOrderDetail() {
   const router = useRouter();
   const { data, mutate } = useSWR<{ order: Order }>(`/api/admin/orders/${id}`, api);
   const [saving, setSaving] = useState(false);
+
   const order = data?.order;
 
   const fmt = (n?: number) =>
@@ -61,11 +63,19 @@ export default function AdminOrderDetail() {
 
   if (!order) return <div>Loading…</div>;
 
+  // ✅ SAFE FALLBACKS (no UI change)
+  const orderId = String(order._id ?? id ?? "");
+  const items: Item[] = Array.isArray(order.items) ? order.items : [];
+
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">Order #{order._id.slice(-6).toUpperCase()}</h1>
-        <button className="border rounded-xl px-3 py-1" onClick={() => router.push("/admin/orders")}>Back</button>
+        <h1 className="text-2xl font-bold text-slate-900">
+          Order #{orderId.slice(-6).toUpperCase()}
+        </h1>
+        <button className="border rounded-xl px-3 py-1" onClick={() => router.push("/admin/orders")}>
+          Back
+        </button>
       </div>
 
       <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-4">
@@ -74,12 +84,15 @@ export default function AdminOrderDetail() {
             <div className="text-xs text-slate-500">Status</div>
             <div className="text-base font-semibold capitalize">{order.status}</div>
           </div>
+
           <select
             className="border rounded-xl px-3 py-2 text-sm"
             onChange={(e) => updateStatus(e.target.value)}
             defaultValue=""
           >
-            <option value="" disabled>Update status…</option>
+            <option value="" disabled>
+              Update status…
+            </option>
             <option value="pending">pending</option>
             <option value="paid">paid</option>
             <option value="fulfilled">fulfilled</option>
@@ -110,7 +123,7 @@ export default function AdminOrderDetail() {
               </tr>
             </thead>
             <tbody>
-              {order.items.map((it, i) => (
+              {items.map((it, i) => (
                 <tr key={i} className="border-b border-slate-200">
                   <td className="py-2 px-4 font-mono">{it.sku ?? "—"}</td>
                   <td className="py-2 px-4">{it.name ?? "—"}</td>
@@ -120,8 +133,13 @@ export default function AdminOrderDetail() {
                   <td className="py-2 px-4">{fmt((it.priceAtOrder ?? 0) * it.qty)}</td>
                 </tr>
               ))}
-              {order.items.length === 0 && (
-                <tr><td className="py-4 px-4 text-center text-slate-500" colSpan={6}>No items</td></tr>
+
+              {items.length === 0 && (
+                <tr>
+                  <td className="py-4 px-4 text-center text-slate-500" colSpan={6}>
+                    No items
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
