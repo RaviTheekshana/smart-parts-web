@@ -48,7 +48,7 @@ export default function AdminLayout({
         <div className="bg-gradient-to-r from-blue-900 to-indigo-600 text-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-2 text-center">
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
-              Welcome To PartPal Admin
+              Welcome To Cloud Retail Admin
             </h1>
           </div>
         </div>
@@ -60,7 +60,7 @@ export default function AdminLayout({
           {/* Sidebar */}
           <aside className="min-h-screen hidden md:flex md:w-64 flex-col gap-2 p-4 border-r border-slate-200 bg-white shadow-sm">
             <div className="px-2 text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
-              PartPal Admin
+              Cloud Retail
             </div>
 
             <nav className="mt-2 space-y-1">

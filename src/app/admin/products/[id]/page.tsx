@@ -76,14 +76,14 @@ export default function EditProductPage() {
     e.preventDefault();
 
     await api(`/api/admin/parts/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify({
-        sku: sku.trim(),
-        name: name.trim(),
-        brand: brand.trim(),
-        price: Number(price || 0),
-      }),
-    });
+  method: "PUT",
+  body: JSON.stringify({
+    sku: sku.trim(),
+    name: name.trim(),
+    brand: brand.trim(),
+    price: Number(price || 0),
+  }),
+});
 
     await mutatePart();
     // If SKU changed, inventory key changes. Refresh inventory.
